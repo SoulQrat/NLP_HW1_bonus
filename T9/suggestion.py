@@ -1,9 +1,10 @@
 from typing import List, Union
 import re
-from numpy import argmax
+from numpy import argmax, argsort
+
 
 def tokenize(message):
-    tokens = re.findall(r'\w+|[^\w\s]', message.lower())
+    tokens = re.findall(r"[a-zA-Z]+", message.lower())
     return tokens
 
 class PrefixTreeNode:
@@ -13,18 +14,11 @@ class PrefixTreeNode:
 
 class PrefixTree:
     def __init__(self, vocabulary: List[str]):
-        """
-        vocabulary: список всех уникальных токенов в корпусе
-        """
         self.root = PrefixTreeNode()
         for word in vocabulary:
             self._add_word(word)
 
     def search_prefix(self, prefix) -> List[str]:
-        """
-        Возвращает все слова, начинающиеся на prefix
-        prefix: str – префикс слова
-        """
         curr = self.root
         for c in prefix:
             if c not in curr.children:
@@ -50,22 +44,16 @@ class PrefixTree:
     
 class WordCompletor:
     def __init__(self, corpus):
-        """
-        corpus: list – корпус текстов
-        """
-        self.vocabulary = {}
+        dummy = {}
         self.words_count = 0
         for text in corpus:
-            for word in text:
+            for word in text[:4]:
                 self.words_count += 1
-                self.vocabulary[word] = self.vocabulary.get(word, 0) + 1
+                dummy[word] = dummy.get(word, 0) + 1
+        self.vocabulary = {k: v for k, v in dummy.items() if v > 5}
         self.prefix_tree = PrefixTree(list(self.vocabulary.keys()))
 
     def get_words_and_probs(self, prefix: str) -> (List[str], List[float]):
-        """
-        Возвращает список слов, начинающихся на prefix,
-        с их вероятностями (нормировать ничего не нужно)
-        """
         words, probs = [], []
         words = self.prefix_tree.search_prefix(prefix)
         probs = [self.vocabulary[word] / self.words_count for word in words]
@@ -86,10 +74,6 @@ class NGramLanguageModel:
                 self.counter[prefix] = self.counter.get(prefix, 0) + 1
 
     def get_next_words_and_probs(self, prefix: list) -> (List[str], List[float]):
-        """
-        Возвращает список слов, которые могут идти после prefix,
-        а так же список вероятностей этих слов
-        """
         next_words, probs = [], []
         ngrams = self.ngrams.get(tuple(prefix[-self.n:]), {})
         next_words_count = self.counter.get(tuple(prefix[-self.n:]), 1)
@@ -102,29 +86,35 @@ class TextSuggestion:
         self.word_completor = word_completor
         self.n_gram_model = n_gram_model
 
-    def suggest_text(self, text: Union[str, list], n_words=3, n_texts=1) -> list[list[str]]:
-        """
-        Возвращает возможные варианты продолжения текста (по умолчанию только один)
-        
-        text: строка или список слов – написанный пользователем текст
-        n_words: число слов, которые дописывает n-граммная модель
-        n_texts: число возвращаемых продолжений (пока что только одно)
-        
-        return: list[list[srt]] – список из n_texts списков слов, по 1 + n_words слов в каждом
-        Первое слово – это то, которое WordCompletor дополнил до целого.
-        """
-        suggestions = [[]]
-
-        if type(text) == str:
-            text = [text]
+    def suggest_word(self, text: list, n_texts=1) -> list[str]:
+        suggestions = []
 
         words, probs = self.word_completor.get_words_and_probs(text[-1])
-        text[-1] = words[argmax(probs)]
-        suggestions[-1].append(text[-1])
+        if len(probs) == 0:
+            return suggestions
+        
+        for idx in argsort(probs)[::-1][:n_texts]:
+            suggestions.append(words[idx]) 
 
-        for _ in range(n_words):
-            next_words, probs = self.n_gram_model.get_next_words_and_probs(text)
-            text.append(next_words[argmax(probs)])    
-            suggestions[-1].append(text[-1])
+        return suggestions
+
+    def suggest_text(self, text: list, n_words=3, n_texts=1) -> list[str]:
+        suggestions = []
+    
+        next_words, probs = self.n_gram_model.get_next_words_and_probs(text)
+        if len(probs) == 0:
+            return suggestions
+
+        for idx in argsort(probs)[::-1][:n_texts]:
+            tmp = text.copy()
+            for _ in range(n_words):
+                if idx > len(next_words):
+                    break
+                tmp.append(next_words[idx])
+                next_words, probs = self.n_gram_model.get_next_words_and_probs(tmp)
+                if len(probs) == 0:
+                    break
+                idx = argmax(probs)
+            suggestions.append(tmp[-n_words:])
 
         return suggestions
