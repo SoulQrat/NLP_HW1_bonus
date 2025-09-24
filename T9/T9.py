@@ -41,9 +41,13 @@ def index() -> rx.Component:
             TypingField(),
             WordSuggestions(),
             TextSuggestions(),
-        ),
-        align="center",
-    )
+            align_items="center",
+            spacing="4",
+            width="100%",
+            ),
+        center_content=True,
+        height="100vh",
+        )
 
 app = rx.App()
 app.add_page(index, title="T9")

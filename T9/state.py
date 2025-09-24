@@ -24,14 +24,14 @@ class State(rx.State):
         if self.text == '':
             return
         tokens = tokenize(self.text)
-        self.word_suggestions = text_suggestion.suggest_word(tokens, n_texts=3)
+        self.word_suggestions = text_suggestion.suggest_word(tokens, n_texts=2)
 
     def _update_text_suggestions(self):
         self.text_suggestions = []
         if self.text == '':
             return
         tokens = tokenize(self.text)
-        self.text_suggestions = [' '.join(tmp) for tmp in text_suggestion.suggest_text(tokens, n_words=1, n_texts=3)]
+        self.text_suggestions = [' '.join(tmp) for tmp in text_suggestion.suggest_text(tokens, n_words=1, n_texts=2)]
 
     def _update_suggestions(self):
         self._update_word_suggestions()
