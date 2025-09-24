@@ -42,6 +42,7 @@ def index() -> rx.Component:
             WordSuggestions(),
             TextSuggestions(),
         ),
+        align="center",
     )
 
 app = rx.App()

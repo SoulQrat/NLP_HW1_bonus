@@ -1,6 +1,7 @@
-from typing import List, Union
+from typing import List
 import re
 from numpy import argmax, argsort
+from tqdm import tqdm
 
 
 def tokenize(message):
@@ -15,7 +16,7 @@ class PrefixTreeNode:
 class PrefixTree:
     def __init__(self, vocabulary: List[str]):
         self.root = PrefixTreeNode()
-        for word in vocabulary:
+        for word in tqdm(vocabulary, total=len(vocabulary), desc='Tree'):
             self._add_word(word)
 
     def search_prefix(self, prefix) -> List[str]:
@@ -46,11 +47,11 @@ class WordCompletor:
     def __init__(self, corpus):
         dummy = {}
         self.words_count = 0
-        for text in corpus:
-            for word in text[:4]:
+        for text in tqdm(corpus, total=len(corpus), desc='Word'):
+            for word in text:
                 self.words_count += 1
                 dummy[word] = dummy.get(word, 0) + 1
-        self.vocabulary = {k: v for k, v in dummy.items() if v > 5}
+        self.vocabulary = {k: v for k, v in dummy.items() if v >= 3}
         self.prefix_tree = PrefixTree(list(self.vocabulary.keys()))
 
     def get_words_and_probs(self, prefix: str) -> (List[str], List[float]):
@@ -64,7 +65,7 @@ class NGramLanguageModel:
         self.n = n
         self.ngrams = {}
         self.counter = {}
-        for text in corpus:
+        for text in tqdm(corpus, total=len(corpus), desc='Ngram'):
             for i in range(len(text) - n):
                 prefix = tuple(text[i:i+n])
                 word = text[i+n]
